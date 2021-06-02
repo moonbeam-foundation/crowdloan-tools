@@ -3,7 +3,7 @@
 A contribution-getter tool for a crowdloan campaign. Contributions are stored in a child-trie and this tool helps retriving the information of the contributors and amount contributed. 
 
 ## Install dependencies
-From the Moonbeam root, run
+From this directory
 
 `npm install`
 
