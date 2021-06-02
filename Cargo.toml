@@ -1,7 +1,0 @@
-[workspace]
-members = [
-    'multisig',
-]
-
-[profile.release]
-panic = 'unwind'
