@@ -32,7 +32,7 @@ async function main () {
     var concatArray = new Uint8Array([ ...bytes, ...array]);
     let child_encoded_bytes = u8aToHex(new TextEncoder().encode(":child_storage:default:"));
     let crowdloan_key = child_encoded_bytes + blake2AsHex(concatArray, 256).substring(2);
-
+    let network_prefix = (await api.consts.system.ss58Prefix.toNumber());
     // Third we get all the keys for that particular crowdloan key
     const all_keys = await api.rpc.childstate.getKeys(crowdloan_key, null);
     let json = {
@@ -58,7 +58,7 @@ async function main () {
                 memo = u8aToHex(storage_item.slice(17,storage_item.length))
             }
             json.contributions.push({
-                "account": encodeAddress(all_keys[i].toHex()),
+                "account": encodeAddress(all_keys[i].toHex(), network_prefix),
                 "contribution": parseInt(balance, 16),
                 "memo": memo
             })
