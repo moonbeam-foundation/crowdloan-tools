@@ -1,0 +1,45 @@
+<html>
+    <body>
+        <div style="margin: 10px;" id="contributions">
+            <span id="total-contribution">...</span>
+        </div>
+        <div style="margin: 10px;" id="calculator">
+            <form onsubmit="computeReward(); return false;">
+                <input type="number" id="user-contribution" value="1">
+                <input type="submit" value="Submit">
+            </form>
+            <span id="reward">...</span>
+        </div>
+    </body>
+    <script lang="javascript">
+        function computeReward() {
+            const totalContribution = parseInt(document.getElementById('total-contribution').innerText);
+            const userContribution = parseInt(document.getElementById('user-contribution').value);
+
+            if (userContribution == NaN) {
+                document.getElementById('reward').innerText = "...";
+                return;
+            }
+
+            document.getElementById('reward').innerText = userContribution / totalContribution * 3000000;
+        }
+
+        async function loadTotalContribution () {
+            console.log("Fecting");
+            await fetch("./2012.json")
+                .then(response => response.json())
+                .then(json => {
+                    document.getElementById('total-contribution').innerText = BigInt(json.total_raised) / 1000000000000n;
+                    computeReward();
+                })
+                .catch((err) => {
+                    console.log("Fecting failed:", err);
+                });
+            
+            setTimeout(loadTotalContribution, 6000);
+            
+        }
+
+        window.onload = loadTotalContribution();
+    </script>
+</html>
