@@ -13,15 +13,15 @@
     </body>
     <script lang="javascript">
         function computeReward() {
-            const totalContribution = parseInt(document.getElementById('total-contribution').innerText);
-            const userContribution = parseInt(document.getElementById('user-contribution').value);
+            const totalContribution = parseFloat(document.getElementById('total-contribution').innerText);
+            const userContribution = parseFloat(document.getElementById('user-contribution').value);
 
             if (userContribution == NaN) {
                 document.getElementById('reward').innerText = "...";
                 return;
             }
 
-            document.getElementById('reward').innerText = userContribution / totalContribution * 3000000;
+            document.getElementById('reward').innerText = (userContribution / totalContribution * 3000000).toFixed(4);
         }
 
         async function loadTotalContribution () {
