@@ -1,7 +1,7 @@
 <html>
     <body>
         <div style="margin: 10px;" id="contributions">
-            <span id="total-contribution">...</span>
+            <span id="total-contribution">...</span> (<span id="total-contributors"></span>)
         </div>
         <div style="margin: 10px;" id="calculator">
             <form onsubmit="computeReward(); return false;">
@@ -32,6 +32,7 @@
                     // 4 digits higher
                     const units = parseFloat(BigInt(json.total_raised) / 100000000n) / 10000;
                     document.getElementById('total-contribution').innerText = units.toFixed(4);
+                    document.getElementById('total-contributors').innerText = json.total_contributors;
                     computeReward();
                 })
                 .catch((err) => {

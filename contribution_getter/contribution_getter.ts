@@ -14,6 +14,7 @@ export type Contribution = {
 export type ContributionResult = {
     total_raised: string;
     contributions: Contribution[];
+    total_contributors: number;
     parachain_id: number;
 };
 
@@ -39,30 +40,37 @@ export async function getCrowdloanInfo(
     ).toJSON() as CrowdloanInfo;
 }
 
-export async function getAllContributions(
+export async function getCrowdloanKey(
     api: ApiPromise,
-    parachainId: number
-): Promise<ContributionResult> {
-    // First we retrieve the trie index of the parachain-id fund info
-    const fund_info = (await api.query.crowdloan.funds(parachainId)).toJSON();
+    trieIndex: number
+): Promise<string> {
     // Second we calculate the crowdloan key. This is composed of
     // b":child_storage:default:" + blake2_256(b"crowdloan" + trie_index as u32)
     let bytes = new TextEncoder().encode("crowdloan");
     // We allocate 4 bytes for the trie index
     let buf = Buffer.allocUnsafe(4);
-    buf.writeUInt32LE(fund_info["trieIndex"]);
+    buf.writeUInt32LE(trieIndex);
     const concatArray = new Uint8Array([...bytes, ...Uint8Array.from(buf)]);
     const childEncodedBytes = u8aToHex(
         new TextEncoder().encode(":child_storage:default:")
     );
-    const crowdloanKey =
-        childEncodedBytes + blake2AsHex(concatArray, 256).substring(2);
+    return childEncodedBytes + blake2AsHex(concatArray, 256).substring(2);
+}
+
+export async function getAllContributions(
+    api: ApiPromise,
+    parachainId: number
+): Promise<ContributionResult> {
+    // First we retrieve the trie index of the parachain-id fund info
+    const fund_info = await getCrowdloanInfo(api, parachainId);
+    const crowdloanKey = await getCrowdloanKey(api, fund_info.trieIndex);
     const networkPrefix = await api.consts.system.ss58Prefix.toNumber();
     // Third we get all the keys for that particular crowdloan key
     const allKeys = await api.rpc.childstate.getKeys(crowdloanKey, null);
     const data: ContributionResult = {
         total_raised: "0",
         contributions: [],
+        total_contributors: 0,
         parachain_id: parachainId,
     };
 
@@ -95,6 +103,7 @@ export async function getAllContributions(
             ).toString();
         }
     }
+    data.total_contributors = data.contributions.length;
     if (data.total_raised != fund_info["raised"]) {
         throw new Error(
             `Contributed amount and raised amount dont match(expected: ${fund_info["raised"]}, actual: ${data.total_raised}})`
