@@ -6,7 +6,8 @@
   "author": "",
   "license": "ISC",
   "scripts": {
-    "contribution-getter": "ts-node 'contribution_getter.ts'"
+    "contribution-getter": "ts-node 'contribution_getter.ts'",
+    "address-contribution-getter": "ts-node 'contribution_address_getter.ts'"
   },
   "dependencies": {
     "@polkadot/api": "^4.12.1",

@@ -1,7 +1,7 @@
 // Import
 import { ApiPromise, WsProvider } from '@polkadot/api';
 import {u8aToHex} from '@polkadot/util';
-import {encodeAddress} from '@polkadot/util-crypto'
+import {encodeAddress, decodeAddress} from '@polkadot/util-crypto'
 
 import {blake2AsHex} from '@polkadot/util-crypto';
 import yargs from 'yargs';
@@ -10,7 +10,8 @@ import writeJsonFile from 'write-json-file';
 const args = yargs.options({
     'parachain-id': { type: 'number', demandOption: true, alias: 'p' },
     'ws-provider': {type: 'string', demandOption: true, alias: 'w'},
-    'output-dir': {type: 'string', demandOption: true, alias: 'o'}
+    'output-dir': {type: 'string', demandOption: true, alias: 'o'},
+    'address': {type: 'string', demandOption: false, alias: 'a'}
   }).argv;
 
 // Construct
@@ -21,6 +22,7 @@ async function main () {
 
     // First we retrieve the trie index of the parachain-id fund info
     const fund_info = (await api.query.crowdloan.funds(args["parachain-id"])).toJSON();
+
     
     // Second we calculate the crowdloan key. This is composed of
     // b":child_storage:default:" + blake2_256(b"crowdloan" + trie_index as u32)
@@ -33,20 +35,25 @@ async function main () {
     let child_encoded_bytes = u8aToHex(new TextEncoder().encode(":child_storage:default:"));
     let crowdloan_key = child_encoded_bytes + blake2AsHex(concatArray, 256).substring(2);
     let network_prefix = (await api.consts.system.ss58Prefix.toNumber());
+    let all_keys = [];
+    if (args["address"]){
+        all_keys = await api.rpc.childstate.getKeys(crowdloan_key, u8aToHex(decodeAddress(args["address"])));
+    }
+    else{
+        all_keys = await api.rpc.childstate.getKeys(crowdloan_key, u8aToHex(decodeAddress(args["address"])));
+    }
     // Third we get all the keys for that particular crowdloan key
-    const all_keys = await api.rpc.childstate.getKeys(crowdloan_key, null);
     let json = {
         "total_raised" : 0,
         "contributions" : [],
         "parachain_id": args["parachain-id"],
     };
-
     // Here we iterate over all the keys that we got for a particular crowdloan key
     for (let i = 0; i < all_keys.length; i++) {      
         const storage = await api.rpc.childstate.getStorage(crowdloan_key, all_keys[i].toHex());
-
         if (storage.isSome){
             let storage_item = storage.unwrap()
+            //console.log(storage_item)
             // The storage item is composed as:
             // Balance (16 bytes with changed endianness)
             // 1 byte memo length
@@ -65,10 +72,12 @@ async function main () {
             json.total_raised += parseInt(balance, 16)
         }
     }
-    if(json.total_raised != fund_info["raised"]){
-        throw new Error(
-            `Contributed amount and raised amount dont match`
-        );
+    if (!args["address"]){
+        if(json.total_raised != fund_info["raised"]){
+            throw new Error(
+                `Contributed amount and raised amount dont match`
+            );
+        }
     }
     console.log(json)
     await writeJsonFile(args['output-dir'], json);
