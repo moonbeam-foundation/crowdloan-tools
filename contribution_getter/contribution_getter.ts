@@ -19,9 +19,9 @@ const wsProvider = new WsProvider(args['ws-provider']);
 
 async function main () {
     const api = await ApiPromise.create({ provider: wsProvider });
-
+    const { hash, parentHash } = await api.rpc.chain.getHeader();
     // First we retrieve the trie index of the parachain-id fund info
-    const fund_info = (await api.query.crowdloan.funds(args["parachain-id"])).toJSON();
+    const fund_info = (await api.query.crowdloan.funds.at(parentHash, args["parachain-id"])).toJSON();
 
     
     // Second we calculate the crowdloan key. This is composed of
@@ -37,10 +37,10 @@ async function main () {
     let network_prefix = (await api.consts.system.ss58Prefix.toNumber());
     let all_keys = [];
     if (args["address"]){
-        all_keys = await api.rpc.childstate.getKeys(crowdloan_key, u8aToHex(decodeAddress(args["address"])));
+        all_keys = await api.rpc.childstate.getKeys(crowdloan_key, u8aToHex(decodeAddress(args["address"])) , parentHash);
     }
     else{
-        all_keys = await api.rpc.childstate.getKeys(crowdloan_key, u8aToHex(decodeAddress(args["address"])));
+        all_keys = await api.rpc.childstate.getKeys(crowdloan_key, null, parentHash);
     }
     // Third we get all the keys for that particular crowdloan key
     let json = {
@@ -49,7 +49,7 @@ async function main () {
         "parachain_id": args["parachain-id"],
     };
     // Here we iterate over all the keys that we got for a particular crowdloan key
-    for (let i = 0; i < all_keys.length; i++) {      
+    for (let i = 0; i < all_keys.length; i++) {
         const storage = await api.rpc.childstate.getStorage(crowdloan_key, all_keys[i].toHex());
         if (storage.isSome){
             let storage_item = storage.unwrap()
