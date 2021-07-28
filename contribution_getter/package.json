@@ -7,7 +7,7 @@
   "license": "ISC",
   "scripts": {
     "contribution-getter": "ts-node 'contribution_getter.ts'",
-    "address-contribution-getter": "ts-node 'contribution_address_getter.ts'"
+    "fund-info-getter": "ts-node 'fund_info_getter.ts'"
   },
   "dependencies": {
     "@polkadot/api": "^4.12.1",
@@ -16,8 +16,11 @@
     "rimraf": "^3.0.2",
     "ts-node": "9.1",
     "typescript": "^3.9.6",
+    "load-json-file": "^6.2.0",
     "yargs": "^17.0.1",
     "@types/yargs": "^17.0.0",
-    "write-json-file": "^4.3.0"
+    "write-json-file": "^4.3.0",
+    "exceljs": "4.2.1",
+    "node-fetch": "2.6.1"
   }
 }
