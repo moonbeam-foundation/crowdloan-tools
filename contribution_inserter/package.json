@@ -6,7 +6,7 @@
   "author": "",
   "license": "ISC",
   "scripts": {
-    "contribution-inserter": "ts-node 'contribution_inserter.ts'",
+    "contribution-inserter": "ts-node 'contribution_inserter.ts'"
   },
   "dependencies": {
     "moonbeam-types-bundle": "1.1.26",
