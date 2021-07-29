@@ -4,6 +4,7 @@ import {u8aToHex} from '@polkadot/util';
 import {encodeAddress, decodeAddress} from '@polkadot/util-crypto'
 import { typesBundle } from "moonbeam-types-bundle";
 
+import type { SubmittableExtrinsic } from "@polkadot/api/promise/types";
 import {blake2AsHex} from '@polkadot/util-crypto';
 import yargs from 'yargs';
 import loadJsonFile from 'load-json-file';
@@ -26,6 +27,7 @@ async function main () {
         (await api.consts.crowdloanRewards.maxInitContributors) as any
     );
     const keyring = new Keyring({ type: "ethereum" });
+
     const sudoAccount =  await keyring.addFromUri(args['sudo_priv_key'], null, "ethereum");
     let contributors = await loadJsonFile(args['input-dir']);
     let totalRaised = BigInt(contributors["total_raised"]);
@@ -77,14 +79,25 @@ async function main () {
         total_length += temporary.length;
     }
     calls.push(api.tx.crowdloanRewards.completeInitialization(args["end_relay_block"]))
+
     // Batch them all
-    await api.tx.sudo
-    .sudo(
-      api.tx.utility.batchAll(
-          calls
-    )
-    )
-    .signAndSend(sudoAccount);
+    const proposal =  api.tx.utility.batchAll(
+        calls);
+
+    let encodedProposal = (proposal as SubmittableExtrinsic)?.method.toHex() || "";
+    let encodedHash = blake2AsHex(encodedProposal);
+
+    const { nonce: rawNonce1, data: balance } = await api.query.system.account(sudoAccount.address);
+    let nonce = BigInt(rawNonce1.toString());
+    let second_nonce = nonce+BigInt(1);
+    await api.tx.democracy
+      .notePreimage(encodedProposal)
+      .signAndSend(sudoAccount, { nonce });
+
+    
+    await api.tx.democracy
+      .propose(encodedHash, 1000000000000000000000n)
+      .signAndSend(sudoAccount, { nonce: second_nonce });
 }
 
 main().catch(console.error).finally(() => process.exit());
