@@ -7,6 +7,7 @@
   "license": "ISC",
   "scripts": {
     "contribution-getter": "ts-node 'contribution_getter.ts'",
+    "contribution-getter-safe": "ts-node 'contribution_getter_safe.ts'",
     "fund-info-getter": "ts-node 'fund_info_getter.ts'"
   },
   "dependencies": {
