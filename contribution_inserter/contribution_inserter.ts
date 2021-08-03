@@ -13,8 +13,8 @@ import { Keyring } from "@polkadot/api";
 const args = yargs.options({
     'ws-provider': {type: 'string', demandOption: true, alias: 'w'},
     'input-dir': {type: 'string', demandOption: true, alias: 'i'},
-    'total_fund': {type: 'string', demandOption: true, alias: 'a'},
-    'sudo_priv_key': {type: 'string', demandOption: true, alias: 'p'},
+    'total_fund': {type: 'string', demandOption: true, alias: 't'},
+    'account_priv_key': {type: 'string', demandOption: true, alias: 'p'},
     'end_relay_block': {type: 'number', demandOption: true, alias: 'e'},
   }).argv;
 
@@ -28,19 +28,12 @@ async function main () {
     );
     const keyring = new Keyring({ type: "ethereum" });
 
-    const sudoAccount =  await keyring.addFromUri(args['sudo_priv_key'], null, "ethereum");
+    const account =  await keyring.addFromUri(args['account_priv_key'], null, "ethereum");
     let contributors = await loadJsonFile(args['input-dir']);
-    let totalRaised = BigInt(contributors["total_raised"]);
     let toDistribute =  BigInt(args["total_fund"]);
     let contributions = contributors["contributions"];
-    let nativePerRelay = Number(toDistribute) /Number(totalRaised);
     
-    console.log(Number(toDistribute))
-    console.log(Number(totalRaised))
-
-    console.log(nativePerRelay)
     let total = BigInt(0);
-    let total_2 = 0;
     let total_contributions = BigInt(0);
 
     // Read total first, otherwise we end up having precision errors
@@ -89,17 +82,17 @@ async function main () {
     let encodedProposal = (proposal as SubmittableExtrinsic)?.method.toHex() || "";
     let encodedHash = blake2AsHex(encodedProposal);
 
-    const { nonce: rawNonce1, data: balance } = await api.query.system.account(sudoAccount.address);
+    const { nonce: rawNonce1, data: balance } = await api.query.system.account(account.address);
     let nonce = BigInt(rawNonce1.toString());
     let second_nonce = nonce+BigInt(1);
     await api.tx.democracy
       .notePreimage(encodedProposal)
-      .signAndSend(sudoAccount, { nonce });
+      .signAndSend(account, { nonce });
 
     
     await api.tx.democracy
       .propose(encodedHash, 1000000000000000000000n)
-      .signAndSend(sudoAccount, { nonce: second_nonce });
+      .signAndSend(account, { nonce: second_nonce });
 }
 
 main().catch(console.error).finally(() => process.exit());
