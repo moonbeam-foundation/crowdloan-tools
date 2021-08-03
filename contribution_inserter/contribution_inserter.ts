@@ -82,6 +82,7 @@ async function main () {
     let encodedProposal = (proposal as SubmittableExtrinsic)?.method.toHex() || "";
     let encodedHash = blake2AsHex(encodedProposal);
 
+    console.log("Encoded proposal hash {:?}", encodedHash);
     const { nonce: rawNonce1, data: balance } = await api.query.system.account(account.address);
     let nonce = BigInt(rawNonce1.toString());
     let second_nonce = nonce+BigInt(1);
