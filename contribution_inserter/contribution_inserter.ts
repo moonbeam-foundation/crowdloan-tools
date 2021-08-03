@@ -14,8 +14,8 @@ const args = yargs.options({
     'ws-provider': {type: 'string', demandOption: true, alias: 'w'},
     'input-dir': {type: 'string', demandOption: true, alias: 'i'},
     'total-fund': {type: 'string', demandOption: true, alias: 't'},
-    'account-priv-key': {type: 'string', demandOption: true, alias: 'a'},
     'end-relay-block': {type: 'number', demandOption: true, alias: 'e'},
+    'account-priv-key': {type: 'string', demandOption: false, alias: 'a'},
     'send-preimage-hash': {type: 'boolean', demandOption: false, alias: 'h'},
     'send-proposal': {type: 'boolean', demandOption: false, alias: 's'},
   }).argv;
@@ -31,7 +31,6 @@ async function main () {
     );
     const keyring = new Keyring({ type: "ethereum" });
 
-    const account =  await keyring.addFromUri(args['account-priv-key'], null, "ethereum");
     let contributors = await loadJsonFile(args['input-dir']);
     let toDistribute =  BigInt(args["total-fund"]);
     let contributions = contributors["contributions"];
@@ -86,8 +85,10 @@ async function main () {
     let encodedHash = blake2AsHex(encodedProposal);
 
     console.log("Encoded proposal hash {:?}", encodedHash);
+    console.log("Encoded length hash {:?}", encodedProposal.length);
 
     if (args["send-preimage-hash"]) {
+        const account =  await keyring.addFromUri(args['account-priv-key'], null, "ethereum");
         const { nonce: rawNonce1, data: balance } = await api.query.system.account(account.address);
         let nonce = BigInt(rawNonce1.toString());
         let second_nonce = nonce+BigInt(1);
