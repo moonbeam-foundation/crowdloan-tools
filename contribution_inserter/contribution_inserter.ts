@@ -3,6 +3,7 @@ import { ApiPromise, WsProvider } from '@polkadot/api';
 import {u8aToHex} from '@polkadot/util';
 import {encodeAddress, decodeAddress} from '@polkadot/util-crypto'
 import { typesBundle } from "moonbeam-types-bundle";
+import { formatBalance } from "@polkadot/util";
 
 import type { SubmittableExtrinsic } from "@polkadot/api/promise/types";
 import {blake2AsHex} from '@polkadot/util-crypto';
@@ -30,6 +31,9 @@ async function main () {
         (await api.consts.crowdloanRewards.maxInitContributors) as any
     );
     const keyring = new Keyring({ type: "ethereum" });
+
+    let claimedAsBalance = formatBalance(args["total-fund"], { withSi: true, withUnit: "Unit" }, 18);
+    console.log("We are going to distribute %s", claimedAsBalance)
 
     let contributors = await loadJsonFile(args['input-dir']);
     let toDistribute =  BigInt(args["total-fund"]);
@@ -67,7 +71,7 @@ async function main () {
         temporary = contributions.slice(i, i + chunk);
         let reward_vec = [];
         for (var k = 0; k < temporary.length; k ++) {
-            reward_vec.push([temporary[k]["account"], temporary[k]["memo"], temporary[k]["associated_reward"]])
+            reward_vec.push([u8aToHex(decodeAddress(temporary[k]["account"])), temporary[k]["memo"], temporary[k]["associated_reward"]])
         }
         calls.push(
             api.tx.crowdloanRewards.initializeRewardVec(reward_vec)
@@ -84,8 +88,8 @@ async function main () {
     let encodedProposal = (proposal as SubmittableExtrinsic)?.method.toHex() || "";
     let encodedHash = blake2AsHex(encodedProposal);
 
-    console.log("Encoded proposal hash {:?}", encodedHash);
-    console.log("Encoded length hash {:?}", encodedProposal.length);
+    console.log("Encoded proposal hash %s", encodedHash);
+    console.log("Encoded length hash %d", encodedProposal.length);
 
     if (args["send-preimage-hash"]) {
         const account =  await keyring.addFromUri(args['account-priv-key'], null, "ethereum");
