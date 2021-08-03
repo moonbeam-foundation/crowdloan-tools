@@ -42,27 +42,29 @@ async function main () {
     let total = BigInt(0);
     let total_2 = 0;
     let total_contributions = BigInt(0);
+
+    // Read total first, otherwise we end up having precision errors
     for (let i = 0; i < contributions.length; i++) {
         total_contributions = total_contributions + BigInt(contributions[i]["contribution"]);
+    }
+    
+    // Now we calculate each amount as toDistribute/total_ksm * contribution
+    for (let i = 0; i < contributions.length; i++) {
         
-        let assigned = (BigInt(contributions[i]["contribution"]) *toDistribute /totalRaised);
+        let assigned = (BigInt(contributions[i]["contribution"]) *toDistribute /total_contributions);
  
         contributions[i]["associated_reward"] = assigned;
         total= total + assigned;
 
     }
-    // For now, and until the runtime is updated, we assume the dust to be accumulated by a dummy account
-    if (total != BigInt(toDistribute)) {
 
-        contributions.push({
-                account: '5C62Ck4UrFPiBtoCmeSrgF7x9yv9mn38446dhCpsi2mLHiFT',
-                contribution: 0,
-                memo: '0x0101010101010101010101010101010101010101',
-                associated_reward: BigInt(toDistribute)-total
-        })
+    if (BigInt(toDistribute)-total > BigInt(contributions.length)) {
+        throw new Error(
+            `The dust is bigger than total contributors`
+        );
     }
     
-
+    // In here we just batch the calls.
     let total_length = 0;
     var i,j, temporary;
     let calls = [];
@@ -72,7 +74,6 @@ async function main () {
         for (var k = 0; k < temporary.length; k ++) {
             reward_vec.push([temporary[k]["account"], temporary[k]["memo"], temporary[k]["associated_reward"]])
         }
-        console.log(reward_vec.length)
         calls.push(
             api.tx.crowdloanRewards.initializeRewardVec(reward_vec)
         )       
@@ -84,6 +85,7 @@ async function main () {
     const proposal =  api.tx.utility.batchAll(
         calls);
 
+    // We just prepare the proposal
     let encodedProposal = (proposal as SubmittableExtrinsic)?.method.toHex() || "";
     let encodedHash = blake2AsHex(encodedProposal);
 
