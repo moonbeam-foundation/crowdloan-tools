@@ -71,11 +71,12 @@ async function main () {
         temporary = contributions.slice(i, i + chunk);
         let reward_vec = [];
         for (var k = 0; k < temporary.length; k ++) {
+            
             reward_vec.push([u8aToHex(decodeAddress(temporary[k]["account"])), temporary[k]["memo"], temporary[k]["associated_reward"]])
         }
         calls.push(
             api.tx.crowdloanRewards.initializeRewardVec(reward_vec)
-        )       
+        )
         total_length += temporary.length;
     }
     calls.push(api.tx.crowdloanRewards.completeInitialization(args["end-relay-block"]))
@@ -89,7 +90,7 @@ async function main () {
     let encodedHash = blake2AsHex(encodedProposal);
 
     console.log("Encoded proposal hash %s", encodedHash);
-    console.log("Encoded length hash %d", encodedProposal.length);
+    console.log("Encoded length %d", encodedProposal.length);
 
     if (args["send-preimage-hash"]) {
         const account =  await keyring.addFromUri(args['account-priv-key'], null, "ethereum");
