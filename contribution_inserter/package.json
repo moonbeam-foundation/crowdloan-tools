@@ -9,7 +9,7 @@
     "contribution-inserter": "ts-node 'contribution_inserter.ts'"
   },
   "dependencies": {
-    "moonbeam-types-bundle": "1.1.26",
+    "moonbeam-types-bundle": "1.1.27",
     "@polkadot/api": "^4.12.1",
     "@polkadot/types": "^4.12.1",
     "npm-watch": "^0.9.0",
