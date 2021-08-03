@@ -13,11 +13,14 @@ import { Keyring } from "@polkadot/api";
 const args = yargs.options({
     'ws-provider': {type: 'string', demandOption: true, alias: 'w'},
     'input-dir': {type: 'string', demandOption: true, alias: 'i'},
-    'total_fund': {type: 'string', demandOption: true, alias: 't'},
-    'account_priv_key': {type: 'string', demandOption: true, alias: 'p'},
-    'end_relay_block': {type: 'number', demandOption: true, alias: 'e'},
+    'total-fund': {type: 'string', demandOption: true, alias: 't'},
+    'account-priv-key': {type: 'string', demandOption: true, alias: 'a'},
+    'end-relay-block': {type: 'number', demandOption: true, alias: 'e'},
+    'send-preimage-hash': {type: 'boolean', demandOption: false, alias: 'h'},
+    'send-proposal': {type: 'boolean', demandOption: false, alias: 's'},
   }).argv;
 
+const PROPOSAL_AMOUNT = 1000000000000000000000n
 // Construct
 const wsProvider = new WsProvider(args['ws-provider']);
 
@@ -28,9 +31,9 @@ async function main () {
     );
     const keyring = new Keyring({ type: "ethereum" });
 
-    const account =  await keyring.addFromUri(args['account_priv_key'], null, "ethereum");
+    const account =  await keyring.addFromUri(args['account-priv-key'], null, "ethereum");
     let contributors = await loadJsonFile(args['input-dir']);
-    let toDistribute =  BigInt(args["total_fund"]);
+    let toDistribute =  BigInt(args["total-fund"]);
     let contributions = contributors["contributions"];
     
     let total = BigInt(0);
@@ -72,7 +75,7 @@ async function main () {
         )       
         total_length += temporary.length;
     }
-    calls.push(api.tx.crowdloanRewards.completeInitialization(args["end_relay_block"]))
+    calls.push(api.tx.crowdloanRewards.completeInitialization(args["end-relay-block"]))
 
     // Batch them all
     const proposal =  api.tx.utility.batchAll(
@@ -83,17 +86,21 @@ async function main () {
     let encodedHash = blake2AsHex(encodedProposal);
 
     console.log("Encoded proposal hash {:?}", encodedHash);
-    const { nonce: rawNonce1, data: balance } = await api.query.system.account(account.address);
-    let nonce = BigInt(rawNonce1.toString());
-    let second_nonce = nonce+BigInt(1);
-    await api.tx.democracy
-      .notePreimage(encodedProposal)
-      .signAndSend(account, { nonce });
 
-    
-    await api.tx.democracy
-      .propose(encodedHash, 1000000000000000000000n)
-      .signAndSend(account, { nonce: second_nonce });
+    if (args["send-preimage-hash"]) {
+        const { nonce: rawNonce1, data: balance } = await api.query.system.account(account.address);
+        let nonce = BigInt(rawNonce1.toString());
+        let second_nonce = nonce+BigInt(1);
+        await api.tx.democracy
+        .notePreimage(encodedProposal)
+        .signAndSend(account, { nonce });
+
+        if (args["send-proposal"]) {
+            await api.tx.democracy
+            .propose(encodedHash, PROPOSAL_AMOUNT)
+            .signAndSend(account, { nonce: second_nonce });
+        }
+    }
 }
 
 main().catch(console.error).finally(() => process.exit());
