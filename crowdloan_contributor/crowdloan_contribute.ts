@@ -1,15 +1,9 @@
 // Import
 import { ApiPromise, WsProvider } from "@polkadot/api";
-import { u8aToHex } from "@polkadot/util";
-import { encodeAddress, decodeAddress } from "@polkadot/util-crypto";
 
-import { blake2AsHex } from "@polkadot/util-crypto";
 import yargs from "yargs";
 import { Keyring } from "@polkadot/api";
 
-import writeJsonFile from "write-json-file";
-import { AnyJson, AnyNumber } from "@polkadot/types/types";
-import { Balance } from "@polkadot/types/interfaces";
 
 const args = yargs.options({
   "parachain-id": { type: "number", demandOption: true, alias: "p" },
