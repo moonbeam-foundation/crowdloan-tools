@@ -1,6 +1,6 @@
 // Import
 import { ApiPromise, WsProvider } from "@polkadot/api";
-
+import { MultiSignature } from "@polkadot/types/interfaces";
 import yargs from "yargs";
 import { Keyring } from "@polkadot/api";
 
@@ -57,15 +57,27 @@ async function main() {
   }
 
   let verifier = fund_info["verifier"];
+  let sig = Object.keys(verifier) as any[0] as any;
+  let call;
   if (verifier) {
     if (!args["signature"]) {
       throw new Error(`The crowdloan is set to provide a signature`);
     }
+    else {
+        let signature = {}
+        signature[sig] = args["signature"]
+        call = api.tx.crowdloan
+        .contribute(args["parachain-id"], args["amount"], signature)
+    }
+  }
+  else {
+      call = api.tx.crowdloan
+      .contribute(args["parachain-id"], args["amount"], null)
   }
 
+
   await new Promise<void>(async (res) => {
-    const unsub = await api.tx.crowdloan
-      .contribute(args["parachain-id"], args["amount"], args["signature"])
+    const unsub = await call
       .signAndSend(account, ({ events = [], status, dispatchError }) => {
         console.log(`Current status is ${status.type}`);
         if (status.isInBlock) {
