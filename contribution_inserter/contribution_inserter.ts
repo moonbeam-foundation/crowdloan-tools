@@ -19,6 +19,7 @@ const args = yargs.options({
     'account-priv-key': {type: 'string', demandOption: false, alias: 'a'},
     'send-preimage-hash': {type: 'boolean', demandOption: false, alias: 'h'},
     'send-proposal': {type: 'boolean', demandOption: false, alias: 's'},
+    'batch-size': {type: 'number', demandOption: false, alias: 'b'},
   }).argv;
 
 const PROPOSAL_AMOUNT = 1000000000000000000000n
@@ -27,9 +28,11 @@ const wsProvider = new WsProvider(args['ws-provider']);
 
 async function main () {
     const api = await ApiPromise.create({ provider: wsProvider , typesBundle: typesBundle as any});
-    const chunk = Number(
-        (await api.consts.crowdloanRewards.maxInitContributors) as any
-    );
+    const chunk = (args['batch-size']) ? args['batch-size'] :
+        Number(
+        (await api.consts.crowdloanRewards.maxInitContributors) as any);
+    
+
     const keyring = new Keyring({ type: "ethereum" });
 
     let claimedAsBalance = formatBalance(args["total-fund"], { withSi: true, withUnit: "Unit" }, 18);
@@ -71,8 +74,13 @@ async function main () {
         temporary = contributions.slice(i, i + chunk);
         let reward_vec = [];
         for (var k = 0; k < temporary.length; k ++) {
-            
-            reward_vec.push([u8aToHex(decodeAddress(temporary[k]["account"])), temporary[k]["memo"], temporary[k]["associated_reward"]])
+            if (temporary[k]["memo"].length != 0) {
+                reward_vec.push([u8aToHex(decodeAddress(temporary[k]["account"])), temporary[k]["memo"], temporary[k]["associated_reward"]])
+            }
+            else {
+                console.log("Pushing unassociated")
+                reward_vec.push([u8aToHex(decodeAddress(temporary[k]["account"])), null, temporary[k]["associated_reward"]])
+            }
         }
         calls.push(
             api.tx.crowdloanRewards.initializeRewardVec(reward_vec)
@@ -81,30 +89,37 @@ async function main () {
     }
     calls.push(api.tx.crowdloanRewards.completeInitialization(args["end-relay-block"]))
 
-    // Batch them all
-    const proposal =  api.tx.utility.batchAll(
-        calls);
+    
+    const account =  await keyring.addFromUri(args['account-priv-key'], null, "ethereum");
+    const { nonce: rawNonce, data: balance } = await api.query.system.account(account.address);
+    let nonce = BigInt(rawNonce.toString());
 
-    // We just prepare the proposal
-    let encodedProposal = (proposal as SubmittableExtrinsic)?.method.toHex() || "";
-    let encodedHash = blake2AsHex(encodedProposal);
+    for (let i = 0; i < calls.length; i++) {
 
-    console.log("Encoded proposal hash %s", encodedHash);
-    console.log("Encoded length %d", encodedProposal.length);
+        // We just prepare the proposals
+        let encodedProposal = (calls[i] as SubmittableExtrinsic)?.method.toHex() || "";
+        let encodedHash = blake2AsHex(encodedProposal);
 
-    if (args["send-preimage-hash"]) {
-        const account =  await keyring.addFromUri(args['account-priv-key'], null, "ethereum");
-        const { nonce: rawNonce1, data: balance } = await api.query.system.account(account.address);
-        let nonce = BigInt(rawNonce1.toString());
-        let second_nonce = nonce+BigInt(1);
-        await api.tx.democracy
-        .notePreimage(encodedProposal)
-        .signAndSend(account, { nonce });
+        if (i == calls.length -1) {
+            console.log("Encoded proposal hash for complete is %s", i, encodedHash);
+        }
+        else {
+           console.log("Encoded proposal hash for calls %d is %s", i, encodedHash);
+        }
+        console.log("Encoded length %d", encodedProposal.length);
 
-        if (args["send-proposal"]) {
+        if (args["send-preimage-hash"]) {
             await api.tx.democracy
-            .propose(encodedHash, PROPOSAL_AMOUNT)
-            .signAndSend(account, { nonce: second_nonce });
+            .notePreimage(encodedProposal)
+            .signAndSend(account, { nonce });
+            nonce++;
+
+            if (args["send-proposal"]) {
+                await api.tx.democracy
+                .propose(encodedHash, PROPOSAL_AMOUNT)
+                .signAndSend(account, { nonce: nonce });
+                nonce++;
+            }
         }
     }
 }
