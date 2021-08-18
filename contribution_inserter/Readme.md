@@ -16,9 +16,13 @@ The script accepts three inputs fields:
 - `--end-relay-block or -e`, which specifies the relay block number by which all rewards should be distributed
 - `--send-preimage-hash or -h`, boolean specifying whether we want to send the preimage hash
 - `--send-proposal or -s`, boolean specifying whether we want to send the proposal to democracy voting
+- `--batch-size or -b`, Optional, number specifying the reward vector batch size. Else we take the maximum from the runtime
 
 ### Example to check a proposal hash
 `yarn contribution-inserter -w ws://127.0.0.1:34112 -i contribution_data/moonriver_data.json -t 3000000000000000000000000 -e 10000`
 
 ### Example to note Pre-Image and propose
 `yarn contribution-inserter -w ws://127.0.0.1:34112 -i contribution_data/moonriver_data.json -t 3000000000000000000000000 -a 0x5fb92d6e98884f76de468fa3f6278f8807c48bebc13595d45af5bdc4da702133 -e 10000 -h true -s true`
+
+### Example to note Pre-Image and propose with batch size
+`yarn contribution-inserter -w ws://127.0.0.1:34112 -i contribution_data/moonriver_data.json -t 3000000000000000000000000 -a 0x5fb92d6e98884f76de468fa3f6278f8807c48bebc13595d45af5bdc4da702133 -e 10000 -h true -s true -b 200`
