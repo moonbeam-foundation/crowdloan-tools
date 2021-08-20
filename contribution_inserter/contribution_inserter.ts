@@ -18,7 +18,7 @@ const args = yargs.options({
     'end-relay-block': {type: 'number', demandOption: true, alias: 'e'},
     'account-priv-key': {type: 'string', demandOption: false, alias: 'a'},
     'send-preimage-hash': {type: 'boolean', demandOption: false, alias: 'h'},
-    'send-proposal-as': {choices: ['democracy', 'collective-external'], demandOption: false, alias: 's'},
+    'send-proposal-as': {choices: ['democracy', 'council-external'], demandOption: false, alias: 's'},
     'collective-threshold': {type: 'number', demandOption: false, alias: 'c'},
     'batch-size': {type: 'number', demandOption: false, alias: 'b'},
   }).argv;
@@ -123,7 +123,7 @@ async function main () {
                 .signAndSend(account, { nonce: nonce });
                 nonce++;
             }
-            else if (args["send-proposal-as"] == 'collective-external') {
+            else if (args["send-proposal-as"] == 'council-external') {
                 let external =  api.tx.democracy.externalProposeMajority(encodedHash)
                 
                 await api.tx.councilCollective
