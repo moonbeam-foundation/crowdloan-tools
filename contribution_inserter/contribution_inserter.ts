@@ -19,6 +19,7 @@ const args = yargs.options({
     'account-priv-key': {type: 'string', demandOption: false, alias: 'a'},
     'send-preimage-hash': {type: 'boolean', demandOption: false, alias: 'h'},
     'send-proposal-as': {choices: ['democracy', 'council-external'], demandOption: false, alias: 's'},
+    'root': {type: 'boolean', demandOption: false, alias: 'r'},
     'collective-threshold': {type: 'number', demandOption: false, alias: 'c'},
     'batch-size': {type: 'number', demandOption: false, alias: 'b'},
   }).argv;
@@ -99,6 +100,15 @@ async function main () {
 
     for (let i = 0; i < calls.length; i++) {
 
+        if (args['root']) {
+            await api.tx.sudo
+            .sudo(
+              calls[i]
+            )
+            .signAndSend(account, { nonce: nonce });  
+            nonce++;
+        }
+        else {
         // We just prepare the proposals
         let encodedProposal = (calls[i] as SubmittableExtrinsic)?.method.toHex() || "";
         let encodedHash = blake2AsHex(encodedProposal);
@@ -132,6 +142,7 @@ async function main () {
                 nonce++;
             }
         }
+    }
     }
 }
 
