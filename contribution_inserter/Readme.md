@@ -8,7 +8,7 @@ From this directory
 `yarn install`
 
 ## Run the script
-The script accepts three inputs fields:
+The script accepts these inputs fields:
 - `--ws-provider or -w`, which specifies the websocket provider to which we will be issuing our requests
 - `--input-dir or -i`, which specifies the input JSON file that we want to use to submit the data
 - `--total-fund-dir or -t`, which specifies the total reward amount to distribute
