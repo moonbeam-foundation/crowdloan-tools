@@ -18,7 +18,8 @@ const args = yargs.options({
     'end-relay-block': {type: 'number', demandOption: true, alias: 'e'},
     'account-priv-key': {type: 'string', demandOption: false, alias: 'a'},
     'send-preimage-hash': {type: 'boolean', demandOption: false, alias: 'h'},
-    'send-proposal': {type: 'boolean', demandOption: false, alias: 's'},
+    'send-proposal-as': {choices: ['democracy', 'collective-external'], demandOption: false, alias: 's'},
+    'collective-threshold': {type: 'number', demandOption: false, alias: 'c'},
     'batch-size': {type: 'number', demandOption: false, alias: 'b'},
   }).argv;
 
@@ -32,6 +33,9 @@ async function main () {
         Number(
         (await api.consts.crowdloanRewards.maxInitContributors) as any);
     
+
+    const collectiveThreshold = (args['collective-threshold']) ? args['collective-threshold'] :1;
+    console.log(collectiveThreshold)
 
     const keyring = new Keyring({ type: "ethereum" });
 
@@ -87,8 +91,7 @@ async function main () {
         )
         total_length += temporary.length;
     }
-    calls.push(api.tx.crowdloanRewards.completeInitialization(args["end-relay-block"]))
-
+    calls.push(api.tx.crowdloanRewards.completeInitialization(args["end-relay-block"]));
     
     const account =  await keyring.addFromUri(args['account-priv-key'], null, "ethereum");
     const { nonce: rawNonce, data: balance } = await api.query.system.account(account.address);
@@ -114,9 +117,17 @@ async function main () {
             .signAndSend(account, { nonce });
             nonce++;
 
-            if (args["send-proposal"]) {
+            if (args["send-proposal-as"] == 'democracy') {
                 await api.tx.democracy
                 .propose(encodedHash, PROPOSAL_AMOUNT)
+                .signAndSend(account, { nonce: nonce });
+                nonce++;
+            }
+            else if (args["send-proposal-as"] == 'collective-external') {
+                let external =  api.tx.democracy.externalProposeMajority(encodedHash)
+                
+                await api.tx.councilCollective
+                .propose(collectiveThreshold, external, external.length)
                 .signAndSend(account, { nonce: nonce });
                 nonce++;
             }
