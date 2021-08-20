@@ -47,21 +47,15 @@ async function main () {
     let contributions = contributors["contributions"];
     
     let total = BigInt(0);
-    let total_contributions = BigInt(0);
-
-    // Read total first, otherwise we end up having precision errors
-    for (let i = 0; i < contributions.length; i++) {
-        total_contributions = total_contributions + BigInt(contributions[i]["contribution"]);
-    }
+    let total_contributions = BigInt(contributors['total_raised']);
     
     // Now we calculate each amount as toDistribute/total_ksm * contribution
     for (let i = 0; i < contributions.length; i++) {
-        
+
         let assigned = (BigInt(contributions[i]["contribution"]) *toDistribute /total_contributions);
- 
+
         contributions[i]["associated_reward"] = assigned;
         total= total + assigned;
-
     }
 
     if (BigInt(toDistribute)-total > BigInt(contributions.length)) {

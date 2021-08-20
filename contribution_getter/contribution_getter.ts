@@ -44,7 +44,7 @@ async function main () {
     }
     // Third we get all the keys for that particular crowdloan key
     let json = {
-        "total_raised" : 0,
+        "total_raised" : 0n,
         "contributions" : [],
         "parachain_id": args["parachain-id"],
     };
@@ -58,7 +58,7 @@ async function main () {
             // Balance (16 bytes with changed endianness)
             // 1 byte memo length
             // Memo
-            let balance = u8aToHex(storage_item.slice(0,16).reverse())
+            let balance = BigInt(u8aToHex(storage_item.slice(0,16).reverse()))
             let memoLenght = storage.unwrap().slice(16,17)
             let memo = "";
             if (u8aToHex(memoLenght) != "0x00") {
@@ -66,10 +66,10 @@ async function main () {
             }
             json.contributions.push({
                 "account": encodeAddress(all_keys[i].toHex(), network_prefix),
-                "contribution": parseInt(balance, 16),
+                "contribution": balance.toString(),
                 "memo": memo
             })
-            json.total_raised += parseInt(balance, 16)
+            json.total_raised += balance;
         }
     }
     if (!args["address"]){
@@ -80,6 +80,9 @@ async function main () {
         }
     }
     console.log(json)
-    await writeJsonFile(args['output-dir'], json);
+    await writeJsonFile(args['output-dir'], {
+        ...json,
+        total_raised: json.total_raised.toString()
+    });
 }
 main().catch(console.error).finally(() => process.exit());
