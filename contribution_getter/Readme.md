@@ -27,7 +27,7 @@ The script accepts three inputs fields:
       "memo": ""
     },
     {
-      "account: "5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y",
+      "account": "5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y",
       "contribution": "200000000000000",
       "memo": "
     }
