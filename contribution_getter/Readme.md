@@ -19,19 +19,19 @@ The script accepts three inputs fields:
 ### Output format
 ```json
 {
-  total_raised: 300000000000000,
-  contributions: [
+  "total_raised": "300000000000000",
+  "contributions": [
     {
-      account: '5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty',
-      contribution: 100000000000000,
-      memo: ''
+      "account": "5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty",
+      "contribution": "100000000000000",
+      "memo": ""
     },
     {
-      account: '5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y',
-      contribution: 200000000000000,
-      memo: ''
+      "account: "5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y",
+      "contribution": "200000000000000",
+      "memo": "
     }
   ],
-  parachain_id: 2001
+  "parachain_id": 2001
 }
 ```
