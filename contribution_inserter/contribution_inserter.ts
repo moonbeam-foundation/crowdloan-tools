@@ -18,6 +18,7 @@ const args = yargs.options({
     'end-relay-block': {type: 'number', demandOption: true, alias: 'e'},
     'account-priv-key': {type: 'string', demandOption: false, alias: 'a'},
     'send-preimage-hash': {type: 'boolean', demandOption: false, alias: 'h'},
+    'at-block': {type: 'number', demandOption: true},
     'send-proposal-as': {choices: ['democracy', 'council-external'], demandOption: false, alias: 's'},
     'collective-threshold': {type: 'number', demandOption: false, alias: 'c'},
     'batch-size': {type: 'number', demandOption: false, alias: 'b'},
@@ -63,12 +64,11 @@ async function main () {
             `The dust is bigger than total contributors`
         );
     }
-    
     // In here we just batch the calls.
     let total_length = 0;
-    var i,j, temporary;
-    let calls = [];
-    for (i = 0,j = contributions.length; i < j; i += chunk) {
+    let i,j, temporary;
+    const rewardTxs = [];
+    for (i = 0, j = contributions.length; i < j; i += chunk) {
         temporary = contributions.slice(i, i + chunk);
         let reward_vec = [];
         for (var k = 0; k < temporary.length; k ++) {
@@ -80,51 +80,43 @@ async function main () {
                 reward_vec.push([u8aToHex(decodeAddress(temporary[k]["account"])), null, temporary[k]["associated_reward"]])
             }
         }
-        calls.push(
-            api.tx.crowdloanRewards.initializeRewardVec(reward_vec)
+        rewardTxs.push(
+            api.tx.scheduler.schedule(args['at-block'] + rewardTxs.length, null, 0, api.tx.crowdloanRewards.initializeRewardVec(reward_vec))
         )
         total_length += temporary.length;
     }
-    calls.push(api.tx.crowdloanRewards.completeInitialization(args["end-relay-block"]));
+    rewardTxs.push(api.tx.scheduler.schedule(args['at-block'] + rewardTxs.length, null, 0, 
+        api.tx.crowdloanRewards.completeInitialization(args["end-relay-block"]))
+    );
+    const batchTx = api.tx.utility.batchAll(rewardTxs);
     
     const account =  await keyring.addFromUri(args['account-priv-key'], null, "ethereum");
     const { nonce: rawNonce, data: balance } = await api.query.system.account(account.address);
     let nonce = BigInt(rawNonce.toString());
 
-    for (let i = 0; i < calls.length; i++) {
+    // We just prepare the proposals
+    let encodedProposal = batchTx?.method.toHex() || "";
+    let encodedHash = blake2AsHex(encodedProposal);
 
-        // We just prepare the proposals
-        let encodedProposal = (calls[i] as SubmittableExtrinsic)?.method.toHex() || "";
-        let encodedHash = blake2AsHex(encodedProposal);
+    console.log("Encoded proposal hash for complete is %s", i, encodedHash);
+    console.log("Encoded length %d", encodedProposal.length);
 
-        if (i == calls.length -1) {
-            console.log("Encoded proposal hash for complete is %s", i, encodedHash);
-        }
-        else {
-           console.log("Encoded proposal hash for calls %d is %s", i, encodedHash);
-        }
-        console.log("Encoded length %d", encodedProposal.length);
+    if (args["send-preimage-hash"]) {
+        await api.tx.democracy
+        .notePreimage(encodedProposal)
+        .signAndSend(account, { nonce: nonce++ });
 
-        if (args["send-preimage-hash"]) {
+        if (args["send-proposal-as"] == 'democracy') {
             await api.tx.democracy
-            .notePreimage(encodedProposal)
-            .signAndSend(account, { nonce });
-            nonce++;
-
-            if (args["send-proposal-as"] == 'democracy') {
-                await api.tx.democracy
-                .propose(encodedHash, PROPOSAL_AMOUNT)
-                .signAndSend(account, { nonce: nonce });
-                nonce++;
-            }
-            else if (args["send-proposal-as"] == 'council-external') {
-                let external =  api.tx.democracy.externalProposeMajority(encodedHash)
-                
-                await api.tx.councilCollective
-                .propose(collectiveThreshold, external, external.length)
-                .signAndSend(account, { nonce: nonce });
-                nonce++;
-            }
+            .propose(encodedHash, PROPOSAL_AMOUNT)
+            .signAndSend(account, { nonce: nonce++ });
+        }
+        else if (args["send-proposal-as"] == 'council-external') {
+            let external =  api.tx.democracy.externalProposeMajority(encodedHash)
+            
+            await api.tx.councilCollective
+            .propose(collectiveThreshold, external, external.length)
+            .signAndSend(account, { nonce: nonce++ });
         }
     }
 }
