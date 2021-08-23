@@ -40,19 +40,21 @@ function generateStorageKeyPrefixArray() {
     const nibbles = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'];
 
     let prefixes = [];
-    prefixes.push(crowdloanRewardsTwox + unassociatedContributionsTwox);
-    prefixes.push(crowdloanRewardsTwox + initializedTwox);
-    prefixes.push(crowdloanRewardsTwox + initRelayBlockTwox);
-    prefixes.push(crowdloanRewardsTwox + endRelayBlockTwox);
-    prefixes.push(crowdloanRewardsTwox + initializedRewardAmountTwox);
-    prefixes.push(crowdloanRewardsTwox + totalContributorsTwox);
+    prefixes.push("0x"+ crowdloanRewardsTwox + unassociatedContributionsTwox);
+    prefixes.push("0x"+ crowdloanRewardsTwox + initializedTwox);
+    prefixes.push("0x"+ crowdloanRewardsTwox + initRelayBlockTwox);
+    prefixes.push("0x"+ crowdloanRewardsTwox + endRelayBlockTwox);
+    prefixes.push("0x"+ crowdloanRewardsTwox + initializedRewardAmountTwox);
+    prefixes.push("0x"+ crowdloanRewardsTwox + totalContributorsTwox);
 
     for (const nibble of nibbles) {
-        prefixes.push(crowdloanRewardsTwox + accountsPayableTwox + nibble);
-        prefixes.push(crowdloanRewardsTwox + claimedRelayChainIdsTwox + nibble);
+        for (const nibble2 of nibbles) {
+            prefixes.push("0x"+ crowdloanRewardsTwox + accountsPayableTwox + nibble + nibble2);
+            prefixes.push("0x"+ crowdloanRewardsTwox + claimedRelayChainIdsTwox + nibble + nibble2);
+        }
     }
 
-    console.log("PREFIXES: ", prefixes);
+    // console.log("PREFIXES: ", prefixes);
 
     return prefixes;
 }
