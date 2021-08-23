@@ -1,12 +1,12 @@
 {
-  "name": "contributor-inserter",
+  "name": "storage-remover",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "author": "",
   "license": "ISC",
   "scripts": {
-    "contribution-inserter": "ts-node 'contribution_inserter.ts'"
+    "storage-remover": "ts-node 'storage_remover.ts'"
   },
   "dependencies": {
     "@polkadot/api": "^4.12.1",

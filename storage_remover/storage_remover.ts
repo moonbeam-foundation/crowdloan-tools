@@ -1,7 +1,5 @@
 // Import
 import { ApiPromise, WsProvider } from '@polkadot/api';
-import {u8aToHex} from '@polkadot/util';
-import {encodeAddress, decodeAddress} from '@polkadot/util-crypto'
 import { typesBundle } from "moonbeam-types-bundle";
 import { formatBalance } from "@polkadot/util";
 
@@ -12,9 +10,8 @@ import loadJsonFile from 'load-json-file';
 import { Keyring } from "@polkadot/api";
 
 const args = yargs.options({
-    // 'ws-provider': {type: 'string', demandOption: true, alias: 'w'},
-    // 'end-relay-block': {type: 'number', demandOption: true, alias: 'e'},
-    // 'account-priv-key': {type: 'string', demandOption: false, alias: 'a'},
+    'ws-provider': {type: 'string', demandOption: true, alias: 'w'},
+    'account-priv-key': {type: 'string', demandOption: true, alias: 'a'},
   }).argv;
 
 // Construct
@@ -61,102 +58,27 @@ function generateStorageKeyPrefixArray() {
 }
 
 async function main () {
-    // const api = await ApiPromise.create({ provider: wsProvider , typesBundle: typesBundle as any});
+    const api = await ApiPromise.create({ provider: wsProvider , typesBundle: typesBundle as any});
 
-    // const keyring = new Keyring({ type: "ethereum" });
+    const keyring = new Keyring({ type: "ethereum" });
 
-    let prefixes = generateStorageKeyPrefixArray();
-
-    /*
-    let claimedAsBalance = formatBalance(args["total-fund"], { withSi: true, withUnit: "Unit" }, 18);
-    console.log("We are going to distribute %s", claimedAsBalance)
-
-    let contributors = await loadJsonFile(args['input-dir']);
-    let toDistribute =  BigInt(args["total-fund"]);
-    let contributions = contributors["contributions"];
-    
-    let total = BigInt(0);
-    let total_contributions = BigInt(contributors['total_raised']);
-    
-    // Now we calculate each amount as toDistribute/total_ksm * contribution
-    for (let i = 0; i < contributions.length; i++) {
-
-        let assigned = (BigInt(contributions[i]["contribution"]) *toDistribute /total_contributions);
-
-        contributions[i]["associated_reward"] = assigned;
-        total= total + assigned;
-    }
-
-    if (BigInt(toDistribute)-total > BigInt(contributions.length)) {
-        throw new Error(
-            `The dust is bigger than total contributors`
-        );
-    }
-    
-    // In here we just batch the calls.
-    let total_length = 0;
-    var i,j, temporary;
-    let calls = [];
-    for (i = 0,j = contributions.length; i < j; i += chunk) {
-        temporary = contributions.slice(i, i + chunk);
-        let reward_vec = [];
-        for (var k = 0; k < temporary.length; k ++) {
-            if (temporary[k]["memo"].length != 0) {
-                reward_vec.push([u8aToHex(decodeAddress(temporary[k]["account"])), temporary[k]["memo"], temporary[k]["associated_reward"]])
-            }
-            else {
-                console.log("Pushing unassociated")
-                reward_vec.push([u8aToHex(decodeAddress(temporary[k]["account"])), null, temporary[k]["associated_reward"]])
-            }
-        }
-        calls.push(
-            api.tx.crowdloanRewards.initializeRewardVec(reward_vec)
-        )
-        total_length += temporary.length;
-    }
-    calls.push(api.tx.crowdloanRewards.completeInitialization(args["end-relay-block"]));
-    
     const account =  await keyring.addFromUri(args['account-priv-key'], null, "ethereum");
     const { nonce: rawNonce, data: balance } = await api.query.system.account(account.address);
     let nonce = BigInt(rawNonce.toString());
 
-    for (let i = 0; i < calls.length; i++) {
+    let prefixes = generateStorageKeyPrefixArray();
 
-        // We just prepare the proposals
-        let encodedProposal = (calls[i] as SubmittableExtrinsic)?.method.toHex() || "";
-        let encodedHash = blake2AsHex(encodedProposal);
+    for (const prefix of prefixes) {
+        // NOTE: We use 1 here which will cause weight to be lower than it should be. We could
+        //       query storage one way or another to calculate this value. Substrate dosen't
+        //       enforce this value, however, so we're OK as long as our block doesn't go
+        //       overweight.
+        const call = api.tx.system.killPrefix(prefix, 1);
 
-        if (i == calls.length -1) {
-            console.log("Encoded proposal hash for complete is %s", i, encodedHash);
-        }
-        else {
-           console.log("Encoded proposal hash for calls %d is %s", i, encodedHash);
-        }
-        console.log("Encoded length %d", encodedProposal.length);
-
-        if (args["send-preimage-hash"]) {
-            await api.tx.democracy
-            .notePreimage(encodedProposal)
+        await api.tx.sudo.sudo(call)
             .signAndSend(account, { nonce });
-            nonce++;
-
-            if (args["send-proposal-as"] == 'democracy') {
-                await api.tx.democracy
-                .propose(encodedHash, PROPOSAL_AMOUNT)
-                .signAndSend(account, { nonce: nonce });
-                nonce++;
-            }
-            else if (args["send-proposal-as"] == 'council-external') {
-                let external =  api.tx.democracy.externalProposeMajority(encodedHash)
-                
-                await api.tx.councilCollective
-                .propose(collectiveThreshold, external, external.length)
-                .signAndSend(account, { nonce: nonce });
-                nonce++;
-            }
-        }
+        nonce++;
     }
-*/
 }
 
 main().catch(console.error).finally(() => process.exit());
