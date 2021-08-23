@@ -22,9 +22,9 @@ const wsProvider = new WsProvider(args['ws-provider']);
 // for the entire storage item, but for both AccountsPayable and ClaimedRelayChainIds, this
 // needs to be broken down into smaller subsets.
 //
-// We accomplish this by appending each unique hex character (right? or will we have to do a
-// full byte?) to the end of these storage items.
-function generateStorageKeyPrefixArray() {
+// We accomplish this by appending each unique byte (256 different values) to the end of these
+// storage items. Because this is excessive, we batch them into 16 groups (16 batches of 16).
+function generateStorageKeyPrefixBatches() {
 
     // two-x hashes used to construct storage keys
     const crowdloanRewardsTwox = "54f9db3490626a75fb6ecd4b909679f0"; // twox128("CrowdloanRewards")
@@ -39,24 +39,35 @@ function generateStorageKeyPrefixArray() {
 
     const nibbles = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'];
 
-    let prefixes = [];
-    prefixes.push("0x"+ crowdloanRewardsTwox + unassociatedContributionsTwox);
-    prefixes.push("0x"+ crowdloanRewardsTwox + initializedTwox);
-    prefixes.push("0x"+ crowdloanRewardsTwox + initRelayBlockTwox);
-    prefixes.push("0x"+ crowdloanRewardsTwox + endRelayBlockTwox);
-    prefixes.push("0x"+ crowdloanRewardsTwox + initializedRewardAmountTwox);
-    prefixes.push("0x"+ crowdloanRewardsTwox + totalContributorsTwox);
+    let batches = [];
+
+    batches.push([
+        "0x"+ crowdloanRewardsTwox + unassociatedContributionsTwox,
+        "0x"+ crowdloanRewardsTwox + initializedTwox,
+        "0x"+ crowdloanRewardsTwox + initRelayBlockTwox,
+        "0x"+ crowdloanRewardsTwox + endRelayBlockTwox,
+        "0x"+ crowdloanRewardsTwox + initializedRewardAmountTwox,
+        "0x"+ crowdloanRewardsTwox + totalContributorsTwox,
+    ]);
 
     for (const nibble of nibbles) {
+        let batch = [];
         for (const nibble2 of nibbles) {
-            prefixes.push("0x"+ crowdloanRewardsTwox + accountsPayableTwox + nibble + nibble2);
-            prefixes.push("0x"+ crowdloanRewardsTwox + claimedRelayChainIdsTwox + nibble + nibble2);
+            batch.push("0x"+ crowdloanRewardsTwox + accountsPayableTwox + nibble + nibble2);
         }
+        batches.push(batch);
     }
 
-    // console.log("PREFIXES: ", prefixes);
+    for (const nibble of nibbles) {
+        let batch = [];
+        for (const nibble2 of nibbles) {
+            batch.push("0x"+ crowdloanRewardsTwox + claimedRelayChainIdsTwox + nibble + nibble2);
+        }
+        batches.push(batch);
+    }
 
-    return prefixes;
+    // console.log("BATCHES: ", batches);
+    return batches;
 }
 
 async function main () {
@@ -68,16 +79,21 @@ async function main () {
     const { nonce: rawNonce, data: balance } = await api.query.system.account(account.address);
     let nonce = BigInt(rawNonce.toString());
 
-    let prefixes = generateStorageKeyPrefixArray();
+    let batches = generateStorageKeyPrefixBatches();
 
-    for (const prefix of prefixes) {
-        // NOTE: We use 1 here which will cause weight to be lower than it should be. We could
-        //       query storage one way or another to calculate this value. Substrate dosen't
-        //       enforce this value, however, so we're OK as long as our block doesn't go
-        //       overweight.
-        const call = api.tx.system.killPrefix(prefix, 1);
+    for (const batch of batches) {
+        let batch_calls = [];
+        for (const prefix of batch) {
 
-        await api.tx.sudo.sudo(call)
+            // NOTE: We use 1 here which will cause weight to be lower than it should be. We could
+            //       query storage one way or another to calculate this value. Substrate dosen't
+            //       enforce this value, however, so we're OK as long as our block doesn't go
+            //       overweight.
+            const call = api.tx.system.killPrefix(prefix, 1);
+            batch_calls.push(call);
+        }
+
+        await api.tx.sudo.sudo(api.tx.utility.batch(batch_calls))
             .signAndSend(account, { nonce });
         nonce++;
     }
