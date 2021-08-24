@@ -93,7 +93,7 @@ async function main () {
             batch_calls.push(call);
         }
 
-        await api.tx.sudo.sudo(api.tx.utility.batch(batch_calls))
+        await api.tx.sudo.sudo(api.tx.utility.batchAll(batch_calls))
             .signAndSend(account, { nonce });
         nonce++;
     }
