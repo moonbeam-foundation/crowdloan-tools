@@ -80,6 +80,7 @@ async function main () {
                 reward_vec.push([u8aToHex(decodeAddress(temporary[k]["account"])), null, temporary[k]["associated_reward"]])
             }
         }
+        // Scheduler parameters are when, periodic frequency, priority, scheduled call.
         rewardTxs.push(
             api.tx.scheduler.schedule(args['at-block'] + rewardTxs.length, null, 0, api.tx.crowdloanRewards.initializeRewardVec(reward_vec))
         )
