@@ -11,8 +11,8 @@
     "fund-info-getter": "ts-node 'fund_info_getter.ts'"
   },
   "dependencies": {
-    "@polkadot/api": "^4.12.1",
-    "@polkadot/types": "^4.12.1",
+    "@polkadot/api": "^6.3.0",
+    "@polkadot/types": "^6.3.0",
     "npm-watch": "^0.9.0",
     "rimraf": "^3.0.2",
     "ts-node": "9.1",
