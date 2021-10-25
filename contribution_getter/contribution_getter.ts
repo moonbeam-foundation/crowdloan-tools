@@ -21,9 +21,6 @@ async function main () {
     const api = await ApiPromise.create({ provider: wsProvider });
    // console.log(await api.rpc.chain.getHeader())
     const parentHash  = (await api.rpc.chain.getHeader() as any)['parentHash'];
-    console.log(parentHash)
-
-    console.log(await api.query.crowdloan.funds.at(parentHash, args["parachain-id"]) , parentHash)
 
     // First we retrieve the trie index of the parachain-id fund info
     const fund_info = (await api.query.crowdloan.funds.at(parentHash, args["parachain-id"])).toJSON();
@@ -41,7 +38,6 @@ async function main () {
     let crowdloan_key = child_encoded_bytes + blake2AsHex(concatArray, 256).substring(2);
     let network_prefix = (await api.consts.system.ss58Prefix.toNumber());
     let all_keys = await api.rpc.childstate.getKeys(crowdloan_key, null, parentHash) as any;
-    console.log(all_keys)
 
 
     // Third we get all the keys for that particular crowdloan key
@@ -53,7 +49,6 @@ async function main () {
     // Here we iterate over all the keys that we got for a particular crowdloan key
     for (let i = 0; i < all_keys.length; i++) {
         const storage = await api.rpc.childstate.getStorage(crowdloan_key, all_keys[i].toHex()) as any;
-        console.log(storage)
         if (storage.isSome){
             let storage_item = storage.unwrap()
             //console.log(storage_item)

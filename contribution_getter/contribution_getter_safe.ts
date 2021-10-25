@@ -7,7 +7,6 @@ import {blake2AsHex} from '@polkadot/util-crypto';
 import yargs from 'yargs';
 import writeJsonFile from 'write-json-file';
 import loadJsonFile from 'load-json-file';
-import XMLHttpRequest from  'xmlhttprequest';
 import assert from 'assert';
 import fetch from 'node-fetch';
 
@@ -30,7 +29,7 @@ async function main () {
     if(args['aux-to-verify-memo-data']) {
         data_to_verify = await loadJsonFile(args['aux-to-verify-memo-data']);
     }
-    const { hash, parentHash } = await api.rpc.chain.getHeader();
+    const parentHash  = (await api.rpc.chain.getHeader() as any)['parentHash'];
     // First we retrieve the trie index of the parachain-id fund info
     const fund_info = (await api.query.crowdloan.funds.at(parentHash, args["parachain-id"])).toJSON();
 
@@ -47,10 +46,10 @@ async function main () {
     let network_prefix = (await api.consts.system.ss58Prefix.toNumber());
     let all_keys = [];
     if (args["address"]){
-        all_keys = await api.rpc.childstate.getKeys(crowdloan_key, u8aToHex(decodeAddress(args["address"])) , parentHash);
+        all_keys = await api.rpc.childstate.getKeys(crowdloan_key, u8aToHex(decodeAddress(args["address"])) , parentHash) as any;
     }
     else{
-        all_keys = await api.rpc.childstate.getKeys(crowdloan_key, null, parentHash);
+        all_keys = await api.rpc.childstate.getKeys(crowdloan_key, null, parentHash) as any;
     }
 
     // Third we get all the keys for that particular crowdloan key
@@ -68,7 +67,7 @@ async function main () {
     let known_faulty = ["DAgtn9udZHC7GVU5gV7ybN8nTyucK9PEqY6QvXiG6fEW6TA", "EkmdfH2Fc6XgPgDwMjye3Nsdj27CCSi9np8Kc7zYoCL2S3G"]
     // Here we iterate over all the keys that we got for a particular crowdloan key
     for (let i = 0; i < all_keys.length; i++) {
-        const storage = await api.rpc.childstate.getStorage(crowdloan_key, all_keys[i].toHex());
+        const storage = await api.rpc.childstate.getStorage(crowdloan_key, all_keys[i].toHex()) as any;
         console.log("Processed %d %", i*100/all_keys.length)
         if (storage.isSome){
             let storage_item = storage.unwrap()
