@@ -19,7 +19,6 @@ const wsProvider = new WsProvider(args['ws-provider']);
 
 async function main () {
     const api = await ApiPromise.create({ provider: wsProvider });
-   // console.log(await api.rpc.chain.getHeader())
     const parentHash  = (await api.rpc.chain.getHeader() as any)['parentHash'];
 
     // First we retrieve the trie index of the parachain-id fund info
@@ -51,7 +50,6 @@ async function main () {
         const storage = await api.rpc.childstate.getStorage(crowdloan_key, all_keys[i].toHex()) as any;
         if (storage.isSome){
             let storage_item = storage.unwrap()
-            //console.log(storage_item)
             // The storage item is composed as:
             // Balance (16 bytes with changed endianness)
             // 1 byte memo length
