@@ -38,7 +38,6 @@ async function main () {
     let network_prefix = (await api.consts.system.ss58Prefix.toNumber());
     let all_keys = await api.rpc.childstate.getKeys(crowdloan_key, null, parentHash) as any;
 
-
     // Third we get all the keys for that particular crowdloan key
     let json = {
         "total_raised" : 0n,
