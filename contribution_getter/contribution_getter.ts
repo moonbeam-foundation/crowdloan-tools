@@ -22,7 +22,7 @@ async function main () {
     const parentHash  = (await api.rpc.chain.getHeader() as any)['parentHash'];
 
     // First we retrieve the trie index of the parachain-id fund info
-    const fund_info = (await api.query.crowdloan.funds.at(parentHash, args["parachain-id"])).toJSON();
+    const fund_info = (await (await api.at(parentHash)).query.crowdloan.funds(args["parachain-id"])).toJSON();
 
     
     // Second we calculate the crowdloan key. This is composed of
@@ -45,8 +45,9 @@ async function main () {
         "parachain_id": args["parachain-id"],
     };
     // Here we iterate over all the keys that we got for a particular crowdloan key
-    for (let i = 0; i < all_keys.length; i++) {
-        const storage = await api.rpc.childstate.getStorage(crowdloan_key, all_keys[i].toHex()) as any;
+    const storages = await api.rpc.childstate.getStorageEntries(crowdloan_key, all_keys.map(i => i.toHex()));
+    for (let i = 0; i < storages.length; i++) {
+        const storage = storages[i];
         if (storage.isSome){
             let storage_item = storage.unwrap()
             // The storage item is composed as:
