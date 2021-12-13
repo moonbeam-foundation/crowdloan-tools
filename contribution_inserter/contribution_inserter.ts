@@ -2,7 +2,6 @@
 import { ApiPromise, WsProvider } from '@polkadot/api';
 import {u8aToHex} from '@polkadot/util';
 import {encodeAddress, decodeAddress} from '@polkadot/util-crypto'
-import { typesBundle } from "moonbeam-types-bundle";
 import { formatBalance } from "@polkadot/util";
 
 import type { SubmittableExtrinsic } from "@polkadot/api/promise/types";
@@ -29,7 +28,7 @@ const PROPOSAL_AMOUNT = 1000000000000000000000n
 const wsProvider = new WsProvider(args['ws-provider']);
 
 async function main () {
-    const api = await ApiPromise.create({ provider: wsProvider , typesBundle: typesBundle as any});
+    const api = await ApiPromise.create({ provider: wsProvider });
     const chunk = (args['batch-size']) ? args['batch-size'] :
         Number(
         (await api.consts.crowdloanRewards.maxInitContributors) as any);
@@ -92,7 +91,7 @@ async function main () {
     const batchTx = api.tx.utility.batchAll(rewardTxs);
     
     const account =  await keyring.addFromUri(args['account-priv-key'], null, "ethereum");
-    const { nonce: rawNonce, data: balance } = await api.query.system.account(account.address);
+    const { nonce: rawNonce, data: balance } = await api.query.system.account(account.address) as any;
     let nonce = BigInt(rawNonce.toString());
 
     // We just prepare the proposals
