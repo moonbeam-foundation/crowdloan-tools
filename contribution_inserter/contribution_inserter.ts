@@ -21,6 +21,7 @@ const args = yargs.options({
     'send-proposal-as': {choices: ['democracy', 'council-external'], demandOption: false, alias: 's'},
     'collective-threshold': {type: 'number', demandOption: false, alias: 'c'},
     'batch-size': {type: 'number', demandOption: false, alias: 'b'},
+    'utility-batch-size': {type: 'number', demandOption: false, alias: 'd'},
   }).argv;
 
 const PROPOSAL_AMOUNT = 1000000000000000000000n
@@ -32,8 +33,11 @@ async function main () {
     const chunk = (args['batch-size']) ? args['batch-size'] :
         Number(
         (await api.consts.crowdloanRewards.maxInitContributors) as any);
-    
 
+    // Number of calls encoded per proposal
+    // Prevents reaching the block size limit
+    const utilityCallChunk = (args['utility-batch-size']) ? args['utility-batch-size'] :
+        Number(10);
     const collectiveThreshold = (args['collective-threshold']) ? args['collective-threshold'] :1;
     console.log(collectiveThreshold)
 
@@ -88,35 +92,49 @@ async function main () {
     rewardTxs.push(api.tx.scheduler.schedule(args['at-block'] + rewardTxs.length, null, 0, 
         api.tx.crowdloanRewards.completeInitialization(args["end-relay-block"]))
     );
-    const batchTx = api.tx.utility.batchAll(rewardTxs);
+
+    // Not all might fit in a block (either because of weight or size)
+    const batchTxs = [];
+    let utilityBatch;
+
+    for (i = 0, j = rewardTxs.length; i < j; i += utilityCallChunk) {
+        utilityBatch = rewardTxs.slice(i, i + utilityCallChunk);
+        batchTxs.push(api.tx.utility.batchAll(utilityBatch));
+    }
     
     const account =  await keyring.addFromUri(args['account-priv-key'], null, "ethereum");
     const { nonce: rawNonce, data: balance } = await api.query.system.account(account.address) as any;
     let nonce = BigInt(rawNonce.toString());
 
-    // We just prepare the proposals
-    let encodedProposal = batchTx?.method.toHex() || "";
-    let encodedHash = blake2AsHex(encodedProposal);
+    let batchTx;
+    for (i = 0; i < batchTxs.length; i++) {
 
-    console.log("Encoded proposal hash for complete is %s", i, encodedHash);
-    console.log("Encoded length %d", encodedProposal.length);
+        batchTx = batchTxs[i]
 
-    if (args["send-preimage-hash"]) {
-        await api.tx.democracy
-        .notePreimage(encodedProposal)
-        .signAndSend(account, { nonce: nonce++ });
+        // We just prepare the proposals
+        let encodedProposal = batchTx?.method.toHex() || "";
+        let encodedHash = blake2AsHex(encodedProposal);
 
-        if (args["send-proposal-as"] == 'democracy') {
+        console.log("Encoded proposal hash for complete is %s", i, encodedHash);
+        console.log("Encoded length %d", encodedProposal.length);
+
+        if (args["send-preimage-hash"]) {
             await api.tx.democracy
-            .propose(encodedHash, PROPOSAL_AMOUNT)
+            .notePreimage(encodedProposal)
             .signAndSend(account, { nonce: nonce++ });
-        }
-        else if (args["send-proposal-as"] == 'council-external') {
-            let external =  api.tx.democracy.externalProposeMajority(encodedHash)
             
-            await api.tx.councilCollective
-            .propose(collectiveThreshold, external, external.length)
-            .signAndSend(account, { nonce: nonce++ });
+            if (args["send-proposal-as"] == 'democracy') {
+                await api.tx.democracy
+                .propose(encodedHash, PROPOSAL_AMOUNT)
+                .signAndSend(account, { nonce: nonce++ });
+            }
+            else if (args["send-proposal-as"] == 'council-external') {
+                let external =  api.tx.democracy.externalProposeMajority(encodedHash)
+                await api.tx.councilCollective
+                .propose(collectiveThreshold, external, external.length)
+                .signAndSend(account, { nonce: nonce++ });
+
+            }
         }
     }
 }
