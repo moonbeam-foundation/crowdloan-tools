@@ -28,6 +28,10 @@ const PROPOSAL_AMOUNT = 1000000000000000000000n
 // Construct
 const wsProvider = new WsProvider(args['ws-provider']);
 
+function delay(ms: number) {
+    return new Promise( resolve => setTimeout(resolve, ms) );
+}
+
 async function main () {
     const api = await ApiPromise.create({ provider: wsProvider });
     const chunk = (args['batch-size']) ? args['batch-size'] :
@@ -108,7 +112,6 @@ async function main () {
 
     let batchTx;
     for (i = 0; i < batchTxs.length; i++) {
-
         batchTx = batchTxs[i]
 
         // We just prepare the proposals
@@ -135,6 +138,9 @@ async function main () {
                 .signAndSend(account, { nonce: nonce++ });
 
             }
+            // Delay to prevent several of the pre-image transactions going into the same block
+            // This should prevent large PoVs
+            await delay(30000);
         }
     }
 }
