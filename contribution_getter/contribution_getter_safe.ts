@@ -25,13 +25,14 @@ const wsProvider = new WsProvider(args['ws-provider']);
 
 async function main () {
     const api = await ApiPromise.create({ provider: wsProvider });
+    
     let data_to_verify = {};
     if(args['aux-to-verify-memo-data']) {
         data_to_verify = await loadJsonFile(args['aux-to-verify-memo-data']);
     }
     const parentHash  = (await api.rpc.chain.getHeader() as any)['parentHash'];
     // First we retrieve the trie index of the parachain-id fund info
-    const fund_info = (await api.query.crowdloan.funds.at(parentHash, args["parachain-id"])).toJSON();
+    const fund_info = (await (await api.at(parentHash)).query.crowdloan.funds(args["parachain-id"])).toJSON();
 
     // Second we calculate the crowdloan key. This is composed of
     // b":child_storage:default:" + blake2_256(b"crowdloan" + trie_index as u32)
@@ -58,17 +59,16 @@ async function main () {
 
     // Third we get all the keys for that particular crowdloan key
     let json = {
-        "total_raised" : 0,
+        "total_raised" : 0n,
         "contributions" : [],
         "parachain_id": args["parachain-id"],
     };
 
-    // We have this as a hack, will remove when we have memos
-    let known_faulty = ["DAgtn9udZHC7GVU5gV7ybN8nTyucK9PEqY6QvXiG6fEW6TA", "EkmdfH2Fc6XgPgDwMjye3Nsdj27CCSi9np8Kc7zYoCL2S3G"]
     // Here we iterate over all the keys that we got for a particular crowdloan key
-    for (let i = 0; i < all_keys.length; i++) {
-        const storage = await api.rpc.childstate.getStorage(crowdloan_key, all_keys[i].toHex()) as any;
-        console.log("Processed %d %", i*100/all_keys.length)
+    const storages = await api.rpc.childstate.getStorageEntries(crowdloan_key, all_keys.map(i => i.toHex()));
+    // Here we iterate over all the keys that we got for a particular crowdloan key
+    for (let i = 0; i < storages.length; i++) {
+        const storage = storages[i];
         if (storage.isSome){
             let storage_item = storage.unwrap()
             //console.log(storage_item)
@@ -80,16 +80,15 @@ async function main () {
             // The 1 byte memo length is compact-scale-encoded. See https://substrate.dev/docs/en/knowledgebase/advanced/codec
             // This means that if we want (in hex) 40 bytes, which translates to 101000 in binary, scale will encoded it as
             // 1010000. This means that whenever we see 80, the correct length is 40.
-            let balance = u8aToHex(storage_item.slice(0,16).reverse())
+            let balance = BigInt(u8aToHex(storage_item.slice(0,16).reverse()))
             let memoLength = storage.unwrap().slice(16,17)
             let memo = "";
+
             // This is where the memo checks will start
             if (args["mandatory-memo-length"]) {
-                
-                if(memoLength[0] != args["mandatory-memo-length"] * 4 && !known_faulty.includes(encodeAddress(all_keys[i].toHex(), network_prefix))) {
-                    throw new Error(
-                        `Wrogn Memo length`
-                    );
+                if(memoLength[0] != args["mandatory-memo-length"] * 4 &&  u8aToHex(memoLength) != "0x00") {
+                    console.log("Invalid memo length for " + encodeAddress(all_keys[i].toHex(), network_prefix))
+                    continue
                 }
             }
 
@@ -140,21 +139,26 @@ async function main () {
         
             json.contributions.push({
                 "account": encodeAddress(all_keys[i].toHex(), network_prefix),
-                "contribution": parseInt(balance, 16),
+                "contribution": balance.toString(),
                 "memo": memo
             })
-            json.total_raised += parseInt(balance, 16)
+            json.total_raised += balance;
         }
     }
     if (!args["address"]){
         if(json.total_raised != fund_info["raised"]){
+            console.log(json.total_raised)
+            console.log(fund_info["raised"])
             throw new Error(
                 `Contributed amount and raised amount dont match`
             );
         }
     }
     console.log(json)
-    await writeJsonFile(args['output-dir'], json);
+    await writeJsonFile(args['output-dir'], {
+        ...json,
+        total_raised: json.total_raised.toString()
+    });
     await writeJsonFile('additional_info.json', address_per_movr);
 }
 main().catch(console.error).finally(() => process.exit());
